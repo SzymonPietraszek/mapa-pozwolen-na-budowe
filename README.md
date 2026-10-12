@@ -1,32 +1,26 @@
-# React + TypeScript + Vite
+# Opis
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+To repozytorium zawiera kod do wizualizacji pozwoleń na budowe na mapie.
 
-Currently, two official plugins are available:
+# Jak uzywac
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Sklonuj kod lokalnie i wejdź do folderu z repozytorium. Wszystkie komendy będą wykonywane z tej ścieżki.
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+Inicjalizacja środowiska pythonowego (jednorazowa):
+```
+python3.14 -m venv ./script/.venv
+source ./script/.venv/bin/activate
+python -m pip install --upgrade pip
+pip install -r ./script/requirements.txt
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Wykonywanie skryptu do przetworzenia danych o pozwoleniach na budowe:
+```
+source ./script/.venv/bin/activate
+python ./script/process_parcels.py "https://www.bip.krakow.pl/plik.php?zid=715723&wer=0&new=t&mode=shw"
+```
+
+Wyjście ze środowiska pythonowego:
+```
+deactivate
+```

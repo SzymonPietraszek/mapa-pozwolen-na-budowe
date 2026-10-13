@@ -35,11 +35,7 @@ export default function App() {
   const mapRef = useRef<MapLibreMap | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [parcels, setParcels] = useState<ParcelsGeoJSON | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [parcelCount, setParcelCount] = useState(0);
 
-  // Wczytaj GeoJSON wygenerowany przez Pythona.
   useEffect(() => {
     const controller = new AbortController();
 
@@ -63,15 +59,8 @@ export default function App() {
         }
 
         setParcels(data);
-        setParcelCount(data.features.length);
       } catch (err) {
-        if (err instanceof Error && err.name !== "AbortError") {
-          setError(err.message);
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
+        console.error(err);
       }
     }
 
@@ -79,7 +68,6 @@ export default function App() {
     return () => controller.abort();
   }, []);
 
-  // Utwórz mapę.
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -101,7 +89,6 @@ export default function App() {
     };
   }, []);
 
-  // Dodaj działki, gdy mapa i dane są gotowe.
   useEffect(() => {
     const map = mapRef.current;
 
@@ -147,7 +134,6 @@ export default function App() {
 
       const properties = feature.properties ?? {};
 
-      // Użyj textContent zamiast wstawiać dane z pliku do HTML.
       const content = document.createElement("div");
       const title = document.createElement("strong");
       title.textContent = `Działka ${properties.parcel_number ?? ""}`;
@@ -187,17 +173,14 @@ export default function App() {
   }, [mapLoaded, parcels]);
 
   return (
-    <main>
-      <div style={{ padding: "8px 12px" }}>
-        {loading && <span>Wczytywanie działek…</span>}
-        {error && <p role="alert">Błąd: {error}</p>}
-        {parcels && <span>Wczytano działki: {parcelCount}</span>}{" "}
-      </div>
-
-      <div
-        ref={containerRef}
-        style={{ width: "100%", height: "80vh", minHeight: 400 }}
-      />
-    </main>
+    <div
+      ref={containerRef}
+      style={{
+        position: "fixed",
+        inset: 0,
+        width: "100%",
+        height: "100dvh",
+      }}
+    />
   );
 }

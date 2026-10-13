@@ -1,122 +1,203 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { useEffect, useRef, useState } from "react";
+import * as maplibregl from "maplibre-gl";
+import type { Map as MapLibreMap } from "maplibre-gl";
+import maplibreWorker from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
+import "maplibre-gl/dist/maplibre-gl.css";
 
-function App() {
-  const [count, setCount] = useState(0)
+maplibregl.setWorkerUrl(maplibreWorker);
+
+type ParcelProperties = {
+  adres_inwestycji?: string;
+  data_decyzji?: string;
+  data_wniosku?: string;
+  nr_decyzji?: string;
+  rodzaj_decyzji?: string;
+  sygnatura_sprawy?: string;
+  temat_wniosku?: string;
+  location?: string;
+  cadastral_unit?: string;
+  district_number?: string;
+  parcel_number?: string;
+  uldk_id?: string;
+};
+
+type ParcelsGeoJSON = {
+  type: "FeatureCollection";
+  features: Array<{
+    type: "Feature";
+    geometry: GeoJSON.Geometry;
+    properties: ParcelProperties;
+  }>;
+};
+
+export default function App() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<MapLibreMap | null>(null);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [parcels, setParcels] = useState<ParcelsGeoJSON | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [parcelCount, setParcelCount] = useState(0);
+
+  // Wczytaj GeoJSON wygenerowany przez Pythona.
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadParcels() {
+      try {
+        const response = await fetch("/parcels2025.geojson", {
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Błąd HTTP ${response.status}: /parcels2025.geojson`);
+        }
+
+        const data = (await response.json()) as ParcelsGeoJSON;
+
+        if (
+          data.type !== "FeatureCollection" ||
+          !Array.isArray(data.features)
+        ) {
+          throw new Error("Nieprawidłowy format GeoJSON.");
+        }
+
+        setParcels(data);
+        setParcelCount(data.features.length);
+      } catch (err) {
+        if (err instanceof Error && err.name !== "AbortError") {
+          setError(err.message);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadParcels();
+    return () => controller.abort();
+  }, []);
+
+  // Utwórz mapę.
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const map = new maplibregl.Map({
+      container: containerRef.current,
+      style: "https://tiles.openfreemap.org/styles/bright",
+      center: [19.945, 50.049],
+      zoom: 13,
+    });
+
+    mapRef.current = map;
+    map.addControl(new maplibregl.NavigationControl());
+
+    map.on("load", () => setMapLoaded(true));
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+    };
+  }, []);
+
+  // Dodaj działki, gdy mapa i dane są gotowe.
+  useEffect(() => {
+    const map = mapRef.current;
+
+    if (!map || !mapLoaded || !parcels) return;
+
+    const sourceId = "parcels";
+
+    if (map.getSource(sourceId)) {
+      (map.getSource(sourceId) as maplibregl.GeoJSONSource).setData(
+        parcels as never,
+      );
+      return;
+    }
+
+    map.addSource(sourceId, {
+      type: "geojson",
+      data: parcels as never,
+    });
+
+    map.addLayer({
+      id: "parcels-fill",
+      type: "fill",
+      source: sourceId,
+      paint: {
+        "fill-color": "#3388ff",
+        "fill-opacity": 0.2,
+      },
+    });
+
+    map.addLayer({
+      id: "parcels-outline",
+      type: "line",
+      source: sourceId,
+      paint: {
+        "line-color": "#1763bb",
+        "line-width": 1.5,
+      },
+    });
+
+    map.on("click", "parcels-fill", (event) => {
+      const feature = event.features?.[0];
+      if (!feature) return;
+
+      const properties = feature.properties ?? {};
+
+      // Użyj textContent zamiast wstawiać dane z pliku do HTML.
+      const content = document.createElement("div");
+      const title = document.createElement("strong");
+      title.textContent = `Działka ${properties.parcel_number ?? ""}`;
+      content.appendChild(title);
+
+      for (const [label, value] of [
+        ["Rodzaj decyzji", properties.rodzaj_decyzji],
+        ["Temat wniosku", properties.temat_wniosku],
+        ["Lokalizacja", properties.location],
+        ["ID ULDK", properties.uldk_id],
+        ["Data decyzji", properties.data_decyzji],
+        ["Data wniosku", properties.data_wniosku],
+        ["Nr decyzji", properties.nr_decyzji],
+        ["Sygnatura sprawy", properties.sygnatura_sprawy],
+        ["Adres inwestycji", properties.adres_inwestycji],
+      ]) {
+        if (value == null || value === "") continue;
+
+        const row = document.createElement("div");
+        row.textContent = `${label}: ${value}`;
+        content.appendChild(row);
+      }
+
+      new maplibregl.Popup()
+        .setLngLat(event.lngLat)
+        .setDOMContent(content)
+        .addTo(map);
+    });
+
+    map.on("mouseenter", "parcels-fill", () => {
+      map.getCanvas().style.cursor = "pointer";
+    });
+
+    map.on("mouseleave", "parcels-fill", () => {
+      map.getCanvas().style.cursor = "";
+    });
+  }, [mapLoaded, parcels]);
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <main>
+      <div style={{ padding: "8px 12px" }}>
+        {loading && <span>Wczytywanie działek…</span>}
+        {error && <p role="alert">Błąd: {error}</p>}
+        {parcels && <span>Wczytano działki: {parcelCount}</span>}{" "}
+      </div>
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      <div
+        ref={containerRef}
+        style={{ width: "100%", height: "80vh", minHeight: 400 }}
+      />
+    </main>
+  );
 }
-
-export default App

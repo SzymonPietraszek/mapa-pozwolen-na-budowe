@@ -80,8 +80,9 @@ def read_pdf() -> list[str]:
                             continue
 
                         if x in COLUMN_LOCATIONS:
-                            item[COLUMN_LOCATIONS[x]] = " ".join(
-                                [item.get(COLUMN_LOCATIONS[x], ""), text]
+                            column_name = COLUMN_LOCATIONS[x].replace(" ", "_").lower()
+                            item[column_name] = " ".join(
+                                [item.get(column_name, ""), text]
                             ).strip()
                             if (
                                 COLUMN_LOCATIONS[x] == LAST_COLUMN
@@ -123,7 +124,7 @@ def get_parcel(row: dict) -> list[dict]:
 
     locations = [
         location.strip()
-        for location in re.split(r"(?=obr\.)", row["Lokalizacja"])
+        for location in re.split(r"(?=obr\.)", row["lokalizacja"])
         if location.strip()
     ]
 
@@ -159,7 +160,7 @@ def get_parcel(row: dict) -> list[dict]:
             raise ValueError(f"Nieprawidłowa geometria dla {uldk_id}")
 
         properties.update(
-            {key: value for key, value in row.items() if key != "Lokalizacja"}
+            {key: value for key, value in row.items() if key != "lokalizacja"}
         )
 
         features.append(
@@ -204,11 +205,11 @@ def main():
             except Exception as error:
                 errors.append(
                     {
-                        "location": row.get("Lokalizacja", ""),
+                        "location": row.get("lokalizacja", ""),
                         "error": str(error),
                     }
                 )
-                print(f"[BŁĄD] {row.get('Lokalizacja', '')}: {error}")
+                print(f"[BŁĄD] {row.get('lokalizacja', '')}: {error}")
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)

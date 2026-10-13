@@ -6,6 +6,8 @@ To repozytorium zawiera kod do wizualizacji pozwoleń na budowe na mapie. Skrypt
 
 Sklonuj kod lokalnie i wejdź do folderu z repozytorium. Wszystkie komendy będą wykonywane z tej ścieżki.
 
+## Generowanie geojson działek na podstawie PDF'a
+
 Inicjalizacja środowiska pythonowego (jednorazowa):
 ```
 python3.14 -m venv ./script/.venv
@@ -25,3 +27,12 @@ Wyjście ze środowiska pythonowego:
 ```
 deactivate
 ```
+
+## Wizualizacja mapy z działkami
+
+```
+npm run dev
+```
+
+W przeglądarce otwórz: http://localhost:5173/
+

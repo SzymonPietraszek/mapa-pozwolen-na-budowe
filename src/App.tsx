@@ -41,12 +41,12 @@ export default function App() {
 
     async function loadParcels() {
       try {
-        const response = await fetch("/parcels2025.geojson", {
+        const response = await fetch("/parcels.geojson", {
           signal: controller.signal,
         });
 
         if (!response.ok) {
-          throw new Error(`Błąd HTTP ${response.status}: /parcels2025.geojson`);
+          throw new Error(`Błąd HTTP ${response.status}: /parcels.geojson`);
         }
 
         const data = (await response.json()) as ParcelsGeoJSON;

@@ -1,8 +1,8 @@
 # Opis
 
-To repozytorium zawiera kod do wizualizacji pozwoleń na budowe na mapie. Skrypt potrzebny do wizualizacji dziala tylko z pozwoleniami na budowę dla Krakowa: https://www.bip.krakow.pl/?dok_id=107889. Dla innych pozwoleń prawdopodobnie trzeba dokonać zmian.
+To repozytorium zawiera kod do wizualizacji pozwoleń na budowe na mapie. Skrypt potrzebny do wizualizacji działa tylko z pozwoleniami na budowę dla Krakowa: https://www.bip.krakow.pl/?dok_id=107889. Dla innych pozwoleń prawdopodobnie trzeba dokonać zmian.
 
-# Jak uzywac
+# Jak używac
 
 Sklonuj kod lokalnie i wejdź do folderu z repozytorium. Wszystkie komendy będą wykonywane z tej ścieżki.
 

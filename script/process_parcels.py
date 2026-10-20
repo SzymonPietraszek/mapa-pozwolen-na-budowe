@@ -3,13 +3,13 @@ import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-import argparse
 import pymupdf
 import requests
 from shapely import wkt
 from shapely.geometry import mapping
 
 ROOT = Path(__file__).resolve().parent
+PDF_URL = "https://www.bip.krakow.pl/plik.php?zid=715390&wer=0&new=t&mode=shw"
 PDF_PATH = ROOT / "in" / "addresses.pdf"
 OUTPUT_PATH = ROOT.parent / "public" / "parcels.geojson"
 REPORT_PATH = ROOT / "out" / "processing-report.json"
@@ -49,8 +49,8 @@ UNIT_CODES = {
 LOCATION_PATTERN = re.compile(r"^obr\.\s*(\d+),\s*Nr dz\.\s*([^,]+),\s*j\.ew\.\s*(.+)$")
 
 
-def download_pdf(url: str) -> Path:
-    response = requests.get(url, timeout=REQUEST_TIMEOUT)
+def download_pdf() -> Path:
+    response = requests.get(PDF_URL, timeout=REQUEST_TIMEOUT)
     response.raise_for_status()
 
     PDF_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -174,13 +174,7 @@ def get_parcel(row: dict) -> list[dict]:
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Pobiera PDF, odczytuje lokalizacje działek i generuje GeoJSON."
-    )
-    parser.add_argument("url", help="URL do pobrania pliku PDF")
-    args = parser.parse_args()
-
-    download_pdf(args.url)
+    download_pdf()
 
     data = read_pdf()
     print(f"Znaleziono {len(data)} wpisów w PDF.")
@@ -227,7 +221,7 @@ def main():
     )
 
     report = {
-        "pdf_url": args.url,
+        "pdf_url": PDF_URL,
         "rows_found": len(data),
         "geometries_saved": len(features),
         "errors_count": len(errors),

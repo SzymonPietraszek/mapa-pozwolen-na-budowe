@@ -19,7 +19,7 @@ pip install -r ./script/requirements.txt
 Wykonywanie skryptu do przetworzenia danych o pozwoleniach na budowe:
 ```
 source ./script/.venv/bin/activate
-python ./script/process_parcels.py "https://www.bip.krakow.pl/plik.php?zid=715390&wer=0&new=t&mode=shw"
+python ./script/process_parcels.py
 ```
 
 Wyjście ze środowiska pythonowego:

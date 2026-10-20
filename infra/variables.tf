@@ -1,0 +1,10 @@
+variable "account_id" { type = string }
+variable "domain_prefix" { type = string }
+variable "github_branch" { type = string }
+variable "github_owner" { type = string }
+variable "github_repo" { type = string }
+variable "google_client_id" { type = string }
+variable "google_client_secret" { type = string }
+variable "emails" { type = list(string) }
+variable "name_prefix" { type = string }
+variable "api_token" { type = string }

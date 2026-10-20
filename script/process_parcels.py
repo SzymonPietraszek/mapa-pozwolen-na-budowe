@@ -2,7 +2,6 @@ import json
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from collections import defaultdict
 
 import argparse
 import pymupdf
@@ -12,7 +11,7 @@ from shapely.geometry import mapping
 
 ROOT = Path(__file__).resolve().parent
 PDF_PATH = ROOT / "in" / "addresses.pdf"
-OUTPUT_PATH = ROOT / "out" / "parcels.geojson"
+OUTPUT_PATH = ROOT.parent / "public" / "parcels.geojson"
 REPORT_PATH = ROOT / "out" / "processing-report.json"
 
 LAST_COLUMN = "Rodzaj decyzji"
@@ -188,12 +187,15 @@ def main():
 
     features = []
     errors = []
+    count = 0
 
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         futures = {executor.submit(get_parcel, row): row for row in data}
 
         for future in as_completed(futures):
             row = futures[future]
+            count += 1
+            print(f"{count/len(data):3.0%}", end=" ")
 
             try:
                 row_features = future.result()

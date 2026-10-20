@@ -3,6 +3,7 @@ import * as maplibregl from "maplibre-gl";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import maplibreWorker from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import "maplibre-gl/dist/maplibre-gl.css";
+import type { Geometry } from "geojson";
 
 maplibregl.setWorkerUrl(maplibreWorker);
 
@@ -25,7 +26,7 @@ type ParcelsGeoJSON = {
   type: "FeatureCollection";
   features: Array<{
     type: "Feature";
-    geometry: GeoJSON.Geometry;
+    geometry: Geometry;
     properties: ParcelProperties;
   }>;
 };

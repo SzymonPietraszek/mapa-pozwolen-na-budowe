@@ -30,6 +30,7 @@ deactivate
 ## Wizualizacja mapy z działkami
 
 ```
+npm install
 npm run dev
 ```
 

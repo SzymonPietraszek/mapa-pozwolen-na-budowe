@@ -5,3 +5,11 @@
 3. Enable zero trust on Cloudflare. Go to a Cloudflare website -> Protect & Connect -> Zero Trust -> Get started -> pick a name -> Zero Trust Free Select plan -> fillin a card details
 4. Create a client id and a client secret for using Google as an identity provider. Follow this tutorial until step 9: https://developers.cloudflare.com/cloudflare-one/integrations/identity-providers/google/
 5. Create a tfvars file with all the needed values:
+
+# How to deploy a website on cloudflare
+
+```
+export VAR_FILE=/terraform-vars/infra.tfvars
+terraform init
+terraform apply -var-file=$VAR_FILE
+```

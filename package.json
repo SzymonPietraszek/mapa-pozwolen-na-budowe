@@ -7,7 +7,7 @@
     "dev": "vite",
     "lint": "oxlint",
     "preview": "vite preview",
-    "init-python": "python3.14 -m venv ./script/.venv && source ./script/.venv/bin/activate && python -m pip install --upgrade pip && pip install -r ./script/requirements.txt",
+    "init-python": "python -m venv ./script/.venv && source ./script/.venv/bin/activate && python -m pip install --upgrade pip && pip install -r ./script/requirements.txt",
     "generate-data": "npm run init-python && python script/process_parcels.py",
     "build": "npm run generate-data && tsc -b && vite build"
   },

@@ -10,8 +10,8 @@ from shapely.geometry import mapping
 
 ROOT = Path(__file__).resolve().parent
 PDF_URLS = [
-    "https://www.bip.krakow.pl/plik.php?zid=715390&wer=0&new=t&mode=shw",
-    "https://www.bip.krakow.pl/plik.php?zid=662593&wer=0&new=t&mode=shw",
+    "https://bip.krakow.pl/plik.php?zid=715390&wer=0&new=t&mode=shw",
+    "https://bip.krakow.pl/plik.php?zid=662593&wer=0&new=t&mode=shw",
 ]
 PDF_PATHS = [ROOT / "in" / "addresses2026.pdf", ROOT / "in" / "addresses2025.pdf"]
 OUTPUT_PATH = ROOT.parent / "public" / "parcels.geojson"

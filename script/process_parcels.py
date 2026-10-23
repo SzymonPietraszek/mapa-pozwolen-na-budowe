@@ -98,7 +98,28 @@ def read_pdfs() -> list[dict]:
     return data
 
 
-def parse_location(location: str) -> dict:
+def process_data_locations(data: list[dict]) -> tuple[list[dict], list[dict]]:
+    errors = []
+    valid_data = []
+
+    for row in data:
+        if "lokalizacja" not in row:
+            errors.append({"error": f"Brak lokalizacji w wierszu: {row}"})
+            print(f"[BŁĄD] Brak lokalizacji w wierszu: {row}")
+            continue
+
+        row["lokalizacja"] = [
+            item.strip()
+            for item in re.split(r"(?=obr\.)", row["lokalizacja"])
+            if item.strip()
+        ]
+
+        valid_data.append(row)
+
+    return valid_data, errors
+
+
+def get_uldk_id(location: str) -> dict:
     match = LOCATION_PATTERN.match(location)
 
     if not match:
@@ -113,69 +134,110 @@ def parse_location(location: str) -> dict:
     if not unit_code:
         raise ValueError(f"Nieznana jednostka ewidencyjna: {unit_name}")
 
-    uldk_id = f"{unit_code}.{obr.zfill(4)}.{parcel_number}"
+    return f"{unit_code}.{obr.zfill(4)}.{parcel_number}"
+
+
+def get_parcel(location: str) -> dict:
+    uldk_id = get_uldk_id(location)
+
+    response = requests.get(
+        "https://uldk.gugik.gov.pl/",
+        params={
+            "request": "GetParcelById",
+            "id": uldk_id,
+            "result": "geom_wkt",
+            "srid": "4326",
+        },
+        timeout=REQUEST_TIMEOUT,
+    )
+    response.raise_for_status()
+
+    text = response.text.strip()
+    lines = text.splitlines()
+
+    if not lines or lines[0].strip() != "0":
+        raise ValueError(f"ULDK nie zwrócił działki {uldk_id}: {text}")
+
+    if len(lines) < 2:
+        raise ValueError(f"ULDK nie zwrócił geometrii dla {uldk_id}")
+
+    geometry_text = re.sub(r"^SRID=\d+;", "", lines[1].strip())
+    geometry = wkt.loads(geometry_text)
+
+    if geometry.is_empty or not geometry.is_valid:
+        raise ValueError(f"Nieprawidłowa geometria dla {uldk_id}")
 
     return {
-        "location": location,
-        "cadastral_unit": unit_name,
-        "district_number": obr,
-        "parcel_number": parcel_number,
         "uldk_id": uldk_id,
+        "geometry": mapping(geometry),
     }
 
 
-def get_parcel(row: dict) -> list[dict]:
+def get_geometries(data: list[dict]) -> dict[str, dict]:
+    errors = []
+    unique_locations = set()
+    for row in data:
+        unique_locations.update(row["lokalizacja"])
+
+    geometries = {}
+
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        futures = {
+            executor.submit(get_parcel, location): location
+            for location in unique_locations
+        }
+
+        for count, future in enumerate(as_completed(futures), start=1):
+            location = futures[future]
+
+            try:
+                geometries[location] = {
+                    "result": future.result(),
+                    "error": None,
+                }
+
+                uldk_id = geometries[location]["result"]["uldk_id"]
+                print(f"{count / len(unique_locations):3.0%} [OK] {uldk_id}")
+
+            except Exception as error:
+                geometries[location] = {
+                    "result": None,
+                    "error": str(error),
+                }
+
+                errors.append(
+                    {
+                        "location": location,
+                        "error": str(error),
+                    }
+                )
+
+                print(
+                    f"{count / len(unique_locations):3.0%} [BŁĄD] {location}: {error}"
+                )
+
+    return geometries, errors
+
+
+def create_geojson_features(data: list[dict], geometries: dict) -> dict:
     features = []
+    for row in data:
+        for location in row["lokalizacja"]:
+            geometry_info = geometries.get(location)
 
-    locations = [
-        location.strip()
-        for location in re.split(r"(?=obr\.)", row["lokalizacja"])
-        if location.strip()
-    ]
+            if not geometry_info or not geometry_info["result"]:
+                continue
 
-    for location in locations:
-        properties = parse_location(location)
-        uldk_id = properties["uldk_id"]
-
-        response = requests.get(
-            "https://uldk.gugik.gov.pl/",
-            params={
-                "request": "GetParcelById",
-                "id": uldk_id,
-                "result": "geom_wkt",
-                "srid": "4326",
-            },
-            timeout=REQUEST_TIMEOUT,
-        )
-        response.raise_for_status()
-
-        text = response.text.strip()
-        lines = text.splitlines()
-
-        if not lines or lines[0].strip() != "0":
-            raise ValueError(f"ULDK nie zwrócił działki {uldk_id}: {text}")
-
-        if len(lines) < 2:
-            raise ValueError(f"ULDK nie zwrócił geometrii dla {uldk_id}")
-
-        geometry_text = re.sub(r"^SRID=\d+;", "", lines[1].strip())
-        geometry = wkt.loads(geometry_text)
-
-        if geometry.is_empty or not geometry.is_valid:
-            raise ValueError(f"Nieprawidłowa geometria dla {uldk_id}")
-
-        properties.update(
-            {key: value for key, value in row.items() if key != "lokalizacja"}
-        )
-
-        features.append(
-            {
-                "type": "Feature",
-                "properties": properties,
-                "geometry": mapping(geometry),
-            }
-        )
-
+            features.append(
+                {
+                    "type": "Feature",
+                    "geometry": geometry_info["result"]["geometry"],
+                    "properties": {
+                        "uldk_id": geometry_info["result"]["uldk_id"],
+                        **row,
+                    },
+                }
+            )
     return features
 
 
@@ -185,33 +247,12 @@ def main():
     data = read_pdfs()
     print(f"Znaleziono {len(data)} wpisów w PDF.")
 
-    features = []
-    errors = []
-    count = 0
+    data, errors = process_data_locations(data)
 
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        futures = {executor.submit(get_parcel, row): row for row in data}
+    geometries, errors_from_geometries = get_geometries(data)
+    errors.extend(errors_from_geometries)
 
-        for future in as_completed(futures):
-            row = futures[future]
-            count += 1
-            print(f"{count/len(data):3.0%}", end=" ")
-
-            try:
-                row_features = future.result()
-                features.extend(row_features)
-
-                for feature in row_features:
-                    print(f"[OK] {feature['properties']['uldk_id']}")
-
-            except Exception as error:
-                errors.append(
-                    {
-                        "location": row.get("lokalizacja", ""),
-                        "error": str(error),
-                    }
-                )
-                print(f"[BŁĄD] {row.get('lokalizacja', '')}: {error}")
+    features = create_geojson_features(data, geometries)
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)

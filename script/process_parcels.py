@@ -9,8 +9,11 @@ from shapely import wkt
 from shapely.geometry import mapping
 
 ROOT = Path(__file__).resolve().parent
-PDF_URL = "https://www.bip.krakow.pl/plik.php?zid=715390&wer=0&new=t&mode=shw"
-PDF_PATH = ROOT / "in" / "addresses.pdf"
+PDF_URLS = [
+    "https://www.bip.krakow.pl/plik.php?zid=715390&wer=0&new=t&mode=shw",
+    "https://www.bip.krakow.pl/plik.php?zid=662593&wer=0&new=t&mode=shw",
+]
+PDF_PATHS = [ROOT / "in" / "addresses2026.pdf", ROOT / "in" / "addresses2025.pdf"]
 OUTPUT_PATH = ROOT.parent / "public" / "parcels.geojson"
 REPORT_PATH = ROOT / "out" / "processing-report.json"
 
@@ -49,46 +52,49 @@ UNIT_CODES = {
 LOCATION_PATTERN = re.compile(r"^obr\.\s*(\d+),\s*Nr dz\.\s*([^,]+),\s*j\.ew\.\s*(.+)$")
 
 
-def download_pdf() -> Path:
-    response = requests.get(PDF_URL, timeout=REQUEST_TIMEOUT)
-    response.raise_for_status()
+def download_pdfs() -> Path:
+    for url, pdf_path in zip(PDF_URLS, PDF_PATHS):
+        response = requests.get(url, timeout=REQUEST_TIMEOUT)
+        response.raise_for_status()
 
-    PDF_PATH.parent.mkdir(parents=True, exist_ok=True)
-    PDF_PATH.write_bytes(response.content)
+        pdf_path.parent.mkdir(parents=True, exist_ok=True)
+        pdf_path.write_bytes(response.content)
 
-    print(f"Pobrano PDF: {PDF_PATH}")
-    return PDF_PATH
+        print(f"Pobrano PDF: {pdf_path}")
 
 
-def read_pdf() -> list[str]:
+def read_pdfs() -> list[dict]:
     data = []
     item = {}
-    with pymupdf.open(PDF_PATH) as pdf:
-        for page in pdf:
-            for block in page.get_text("dict")["blocks"]:
-                for line in block.get("lines", []):
-                    for span in line["spans"]:
-                        text = span["text"].strip()
-                        x = span["bbox"][0]
+    for pdf_path in PDF_PATHS:
+        with pymupdf.open(pdf_path) as pdf:
+            for page in pdf:
+                for block in page.get_text("dict")["blocks"]:
+                    for line in block.get("lines", []):
+                        for span in line["spans"]:
+                            text = span["text"].strip()
+                            x = span["bbox"][0]
 
-                        if not text or text == "Lp":
-                            continue
+                            if not text or text == "Lp":
+                                continue
 
-                        if text in COLUMNS:
-                            COLUMN_LOCATIONS[x] = text
-                            continue
+                            if text in COLUMNS:
+                                COLUMN_LOCATIONS[x] = text
+                                continue
 
-                        if x in COLUMN_LOCATIONS:
-                            column_name = COLUMN_LOCATIONS[x].replace(" ", "_").lower()
-                            item[column_name] = " ".join(
-                                [item.get(column_name, ""), text]
-                            ).strip()
-                            if (
-                                COLUMN_LOCATIONS[x] == LAST_COLUMN
-                                and text in LAST_COLUMN_END
-                            ):
-                                data.append(item)
-                                item = {}
+                            if x in COLUMN_LOCATIONS:
+                                column_name = (
+                                    COLUMN_LOCATIONS[x].replace(" ", "_").lower()
+                                )
+                                item[column_name] = " ".join(
+                                    [item.get(column_name, ""), text]
+                                ).strip()
+                                if (
+                                    COLUMN_LOCATIONS[x] == LAST_COLUMN
+                                    and text in LAST_COLUMN_END
+                                ):
+                                    data.append(item)
+                                    item = {}
     return data
 
 
@@ -174,9 +180,9 @@ def get_parcel(row: dict) -> list[dict]:
 
 
 def main():
-    download_pdf()
+    download_pdfs()
 
-    data = read_pdf()
+    data = read_pdfs()
     print(f"Znaleziono {len(data)} wpisów w PDF.")
 
     features = []
@@ -221,7 +227,7 @@ def main():
     )
 
     report = {
-        "pdf_url": PDF_URL,
+        "pdf_urls": PDF_URLS,
         "rows_found": len(data),
         "geometries_saved": len(features),
         "errors_count": len(errors),

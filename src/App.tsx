@@ -4,6 +4,7 @@ import type { Map as MapLibreMap } from "maplibre-gl";
 import maplibreWorker from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { FeatureCollection, Geometry } from "geojson";
+import { parcelFillColor } from "./mapStyles";
 
 maplibregl.setWorkerUrl(maplibreWorker);
 
@@ -92,8 +93,8 @@ export default function App() {
       type: "fill",
       source: sourceId,
       paint: {
-        "fill-color": "#3388ff",
-        "fill-opacity": 0.2,
+        "fill-color": parcelFillColor,
+        "fill-opacity": 0.5,
       },
     });
 

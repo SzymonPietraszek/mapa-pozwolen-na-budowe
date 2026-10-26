@@ -52,8 +52,12 @@ UNIT_CODES = {
 LOCATION_PATTERN = re.compile(r"^obr\.\s*(\d+),\s*Nr dz\.\s*([^,]+),\s*j\.ew\.\s*(.+)$")
 
 
-def download_pdfs() -> Path:
+def download_pdfs_if_missing() -> None:
     for url, pdf_path in zip(PDF_URLS, PDF_PATHS):
+        if pdf_path.exists():
+            print(f"PDF już istnieje: {pdf_path}")
+            continue
+
         response = requests.get(url, timeout=REQUEST_TIMEOUT)
         response.raise_for_status()
 
@@ -242,7 +246,7 @@ def create_geojson_features(data: list[dict], geometries: dict) -> dict:
 
 
 def main():
-    download_pdfs()
+    download_pdfs_if_missing()
 
     data = read_pdfs()
     print(f"Znaleziono {len(data)} wpisów w PDF.")

@@ -3,33 +3,11 @@ import * as maplibregl from "maplibre-gl";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import maplibreWorker from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import "maplibre-gl/dist/maplibre-gl.css";
-import type { Geometry } from "geojson";
+import type { FeatureCollection, Geometry } from "geojson";
 
 maplibregl.setWorkerUrl(maplibreWorker);
 
-type ParcelProperties = {
-  adres_inwestycji?: string;
-  data_decyzji?: string;
-  data_wniosku?: string;
-  nr_decyzji?: string;
-  rodzaj_decyzji?: string;
-  sygnatura_sprawy?: string;
-  temat_wniosku?: string;
-  location?: string;
-  cadastral_unit?: string;
-  district_number?: string;
-  parcel_number?: string;
-  uldk_id?: string;
-};
-
-type ParcelsGeoJSON = {
-  type: "FeatureCollection";
-  features: Array<{
-    type: "Feature";
-    geometry: Geometry;
-    properties: ParcelProperties;
-  }>;
-};
+type ParcelsGeoJSON = FeatureCollection<Geometry, Record<string, unknown>>;
 
 export default function App() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -134,27 +112,19 @@ export default function App() {
       if (!feature) return;
 
       const properties = feature.properties ?? {};
-
       const content = document.createElement("div");
-      const title = document.createElement("strong");
-      title.textContent = `Działka ${properties.parcel_number ?? ""}`;
-      content.appendChild(title);
 
-      for (const [label, value] of [
-        ["Rodzaj decyzji", properties.rodzaj_decyzji],
-        ["Temat wniosku", properties.temat_wniosku],
-        ["Lokalizacja", properties.location],
-        ["ID ULDK", properties.uldk_id],
-        ["Data decyzji", properties.data_decyzji],
-        ["Data wniosku", properties.data_wniosku],
-        ["Nr decyzji", properties.nr_decyzji],
-        ["Sygnatura sprawy", properties.sygnatura_sprawy],
-        ["Adres inwestycji", properties.adres_inwestycji],
-      ]) {
+      for (const [key, value] of Object.entries(properties)) {
         if (value == null || value === "") continue;
 
+        const label = key.replaceAll("_", " ");
         const row = document.createElement("div");
-        row.textContent = `${label}: ${value}`;
+        const labelElement = document.createElement("strong");
+
+        labelElement.textContent = `${label}: `;
+        row.appendChild(labelElement);
+        row.appendChild(document.createTextNode(String(value)));
+
         content.appendChild(row);
       }
 

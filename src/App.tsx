@@ -103,7 +103,14 @@ export default function App() {
       type: "line",
       source: sourceId,
       paint: {
-        "line-color": "#1763bb",
+        "line-color": [
+          "case",
+          ["in", "jednorodzi", ["get", "temat_wniosku"]],
+          "#16a34a", // Jednorodzinna — zielony
+          ["in", "wielorodzi", ["get", "temat_wniosku"]],
+          "#dc2626", // Wielorodzinna — czerwony
+          "#1763bb", // Pozostałe — niebieski
+        ],
         "line-width": 1.5,
       },
     });

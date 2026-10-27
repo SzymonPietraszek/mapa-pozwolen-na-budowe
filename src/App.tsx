@@ -5,6 +5,7 @@ import maplibreWorker from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { FeatureCollection, Geometry } from "geojson";
 import { parcelFillColor } from "./mapStyles";
+import MapLegend from "./MapLegend";
 
 maplibregl.setWorkerUrl(maplibreWorker);
 
@@ -152,14 +153,18 @@ export default function App() {
   }, [mapLoaded, parcels]);
 
   return (
-    <div
-      ref={containerRef}
-      style={{
-        position: "fixed",
-        inset: 0,
-        width: "100%",
-        height: "100dvh",
-      }}
-    />
+    <div style={{ position: "fixed", inset: 0 }}>
+      <div
+        ref={containerRef}
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+        }}
+      />
+
+      <MapLegend />
+    </div>
   );
 }
